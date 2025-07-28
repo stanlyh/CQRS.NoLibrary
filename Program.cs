@@ -1,6 +1,39 @@
+using CQRS.NoLibrary.Abstractions;
+using CQRS.NoLibrary.Features.Users;
+
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddOpenApi();
+
+
+builder.Services.AddScoped<IMediator,  Mediator>();
+builder.Services.AddScoped<ICommandHandler<CreateUserCommand>, CreateUserCommandHandler>();
+builder.Services.AddScoped<IQueryHandler<GetUserByIdQuery, UserDto>, GetUserByIdQueryHandler>();
+
+
 var app = builder.Build();
 
-app.MapGet("/", () => "Hello World!");
+// Configure the HTTP request pipeline.
+if (app.Environment.IsDevelopment())
+{
+    app.MapOpenApi();
+}
+
+app.UseHttpsRedirection();
+
+
+//How to Implement the CQRS Pattern in Clean Architecture (from scratch)
+
+app.MapPost("/user", async (CreateUserCommand user, IMediator mediator) => {
+
+    await mediator.SendAsync(user);
+    return Results.Created();
+});
+
+app.MapGet("/user", async (int id, IMediator mediator) => {
+    var query = new GetUserByIdQuery(id);
+    var result = await mediator.SendAsync<GetUserByIdQuery, UserDto>(query);
+    return Results.Ok(result);
+});
 
 app.Run();
